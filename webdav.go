@@ -1,0 +1,60 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+
+	"golang.org/x/net/webdav"
+)
+
+var dir string
+
+func main() {
+
+	dirFlag := flag.String("d", "./", "Directory to serve from. Default is CWD")
+	httpPort := flag.Int("p", 8081, "Port to serve on (Plain HTTP)")
+	httpsPort := flag.Int("ps", 8443, "Port to serve TLS on")
+	serveSecure := flag.Bool("s", false, "Serve HTTPS. Default false")
+	logfile := flag.String("l", "./webdav.log", "path/file to log to")
+	flag.Parse()
+
+	dir = *dirFlag
+	file, err := os.OpenFile(*logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalln("Failed to open log file", file, ":", err)
+		os.Exit(1)
+	}
+	defer file.Close()
+	log.SetOutput(file)
+	srv := &webdav.Handler{
+		FileSystem: webdav.Dir(dir),
+		LockSystem: webdav.NewMemLS(),
+		Logger: func(r *http.Request, err error) {
+			if err != nil {
+				log.Printf("WEBDAV [%s]: %s, ERROR: %s\n", r.Method, r.URL, err)
+			} else {
+				log.Printf("WEBDAV [%s]: %s \n", r.Method, r.URL)
+			}
+		},
+	}
+	http.Handle("/", srv)
+	if *serveSecure == true {
+		if _, err := os.Stat("./cert.pem"); err != nil {
+			fmt.Println("[x] No cert.pem in current directory. Please provide a valid cert")
+			return
+		}
+		if _, er := os.Stat("./key.pem"); er != nil {
+			fmt.Println("[x] No key.pem in current directory. Please provide a valid cert")
+			return
+		}
+
+		go http.ListenAndServeTLS(fmt.Sprintf(":%d", *httpsPort), "cert.pem", "key.pem", nil)
+	}
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", *httpPort), nil); err != nil {
+		log.Fatalf("Error with WebDAV server: %v", err)
+	}
+
+}
