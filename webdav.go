@@ -27,7 +27,6 @@ func main() {
 		log.Fatalln("Failed to open log file", file, ":", err)
 		os.Exit(1)
 	}
-	defer file.Close()
 	log.SetOutput(file)
 	srv := &webdav.Handler{
 		FileSystem: webdav.Dir(dir),
