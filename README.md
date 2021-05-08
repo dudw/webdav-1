@@ -1,5 +1,5 @@
 # webdav
-small webdav server written in go. meant for network attached storage. just over 50 lines of code, i cant get tls to work properly pls help
+small webdav server written in go. meant for network attached storage. just over 50 lines of code.
 
 webdav is a technology related to http. Got tired of SMB / NFS compatibility issues and decided to give webdav a try. This is a pretty vanilla recipe, nothing mind blowing here.
 
@@ -20,5 +20,5 @@ Usage of webdav:
   
   nohup /home/rxlx/bin/webdav -s -d /Bstor/ -ps 8081 -l /home/rxlx/bin/logs/$(date | tr ' ' '-').log &
   
- **NOTE** i cannot get tls working properly yet. use this on the public internet at your own risk.
+ **NOTE** you'll need a cert.pem and key.pem for tls to work
 ```
