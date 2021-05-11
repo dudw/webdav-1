@@ -3,7 +3,7 @@ small webdav server written in go. meant for network attached storage. just over
 
 webdav is a technology related to http. Got tired of SMB / NFS compatibility issues and decided to give webdav a try. This is a pretty vanilla recipe, nothing mind blowing here.
 
-I'd like to add user support but I dont need it at the moment since this all lives on a private network. Another thing to note: this code creates a memory lock to prevent it from paging. sometimes on sigint it'll trigger a wait time that can last a few minutes. you can safely kill it with 9.
+I'd like to add user support but I will need to implement some middleware for that. Another thing to note: this code creates a memory lock to prevent it from paging. sometimes on sigint it'll trigger a wait time that can last a few minutes. you can safely kill it with 9.
 
 ```
 rxlx ~ $ webdav -h
