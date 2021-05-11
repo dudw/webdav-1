@@ -18,7 +18,7 @@ Usage of webdav:
     	Port to serve TLS on (default 8443)
   -s	Serve HTTPS. Default false
   
-  nohup /home/rxlx/bin/webdav -s -d /Bstor/ -ps 8081 -l /home/rxlx/bin/logs/$(date | tr ' ' '-').log &
+  nohup /home/rxlx/bin/webdav -s -d /Bstor/ -ps 5201 -l /home/rxlx/bin/logs/$(date | tr ' ' '-').log &
   
  **NOTE** you'll need a cert.pem and key.pem for tls to work
 ```
