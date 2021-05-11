@@ -23,6 +23,6 @@ Usage of webdav:
  **NOTE** you'll need a cert.pem and key.pem for tls to work
 ```
 
-<h2>more notes
+<h2>more notes</h2>
 
-For some reason (as of big sur 11.3.1) macOS fails to negotiate for cipher suites and the handshake will always fail for self-signed certs. You will need to add them your keyring. **Additionally** on mac, I'm tracing down a an error where finder locks up trying to write to the remote location ( which is a stripped down webdav server running on EL8 ) over http (not secure). macOS just doesnt like dealing with plain http very much it would appear.
+For some reason (as of big sur 11.3.1) macOS fails to negotiate for cipher suites and the handshake will always fail for self-signed certs. You will need to add them to your keyring. **Additionally** on mac, I'm tracing down a an error where finder locks up trying to write to the remote location ( which is running on EL8 ) over http (not secure). macOS just doesnt like dealing with plain http very much it would appear.
