@@ -1,5 +1,5 @@
 # webdav
-small webdav server written in go. meant for network attached storage. just over 50 lines of code.
+small webdav server written in go. meant for network attached storage.
 
 webdav is a technology related to http. Got tired of SMB / NFS compatibility issues and decided to give webdav a try. This is a pretty vanilla recipe, nothing mind blowing here.
 
