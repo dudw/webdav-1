@@ -1,59 +1,126 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"log/syslog"
 	"net/http"
 	"os"
+	"runtime"
+	"strings"
+	"time"
 
 	"golang.org/x/net/webdav"
 )
 
-var dir string
+var (
+	httpPort  = flag.Int("p", 6200, "http port (plain)")
+	httpsPort = flag.Int("ps", 6201, "https port (tls)")
+	poll      = flag.Int("poll", 30, "how often to poll runtime stats")
+	insecure  = flag.Bool("insecure", false, "disable TLS")
+	monitor   = flag.Bool("monitor", false, "enable metric logging; memory, heap, numGC, etc")
+	cert      = flag.String("cert", "./cert.pem", "path to your cert")
+	key       = flag.String("key", "./key.pem", "path to your key")
+	dir       = flag.String("dir", "./", "Directory to serve from. Default is CWD")
+	logPath   = flag.String("log", "./webdav.log", "path/file to log to")
+)
+
+type Profile struct {
+	Alloc,
+	TotalAlloc,
+	MemoryAlloc,
+	System,
+	Free,
+	Objects,
+	TotalPauses uint64
+	NGC    uint32
+	NumCPU int
+}
 
 func main() {
-
-	dirFlag := flag.String("d", "./", "Directory to serve from. Default is CWD")
-	httpPort := flag.Int("p", 8081, "Port to serve on (Plain HTTP)")
-	httpsPort := flag.Int("ps", 8443, "Port to serve TLS on")
-	serveSecure := flag.Bool("s", false, "Serve HTTPS. Default false")
-	logfile := flag.String("l", "./webdav.log", "path/file to log to")
 	flag.Parse()
-
-	dir = *dirFlag
-	file, err := os.OpenFile(*logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalln("Failed to open log file", file, ":", err)
-		os.Exit(1)
+	logHandler(*logPath)
+	if *monitor {
+		go monitorRuntimeProfile()
 	}
-	log.SetOutput(file)
-	srv := &webdav.Handler{
-		FileSystem: webdav.Dir(dir),
+
+	svr := &webdav.Handler{
+		FileSystem: webdav.Dir(*dir),
 		LockSystem: webdav.NewMemLS(),
 		Logger: func(r *http.Request, err error) {
 			if err != nil {
-				log.Printf("WEBDAV [%s]: %s, ERROR: %s\n", r.Method, r.URL, err)
+				log.Printf("-> %s: %s, ERROR: %s\n", r.Method, r.URL, err)
 			} else {
-				log.Printf("WEBDAV [%s]: %s \n", r.Method, r.URL)
+				log.Printf("-> %s: %s \n", r.Method, r.URL)
 			}
 		},
 	}
-	http.Handle("/", srv)
-	if *serveSecure == true {
-		if _, err := os.Stat("./cert.pem"); err != nil {
-			fmt.Println("[x] No cert.pem in current directory. Please provide a valid cert")
-			return
+
+	http.Handle("/", svr)
+	if !*insecure {
+		if _, err := os.Stat(*cert); err != nil {
+			fmt.Printf("no cert located at: %v", *cert)
+			os.Exit(1)
 		}
-		if _, er := os.Stat("./key.pem"); er != nil {
-			fmt.Println("[x] No key.pem in current directory. Please provide a valid cert")
-			return
+		if _, er := os.Stat(*key); er != nil {
+			fmt.Printf("no key located at: %v", *key)
+			os.Exit(1)
 		}
 
-		go http.ListenAndServeTLS(fmt.Sprintf(":%d", *httpsPort), "cert.pem", "key.pem", nil)
+		go http.ListenAndServeTLS(fmt.Sprintf(":%d", *httpsPort), *cert, *key, nil)
 	}
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", *httpPort), nil); err != nil {
-		log.Fatalf("Error with WebDAV server: %v", err)
+		fmt.Println(err)
+		log.Fatalf("error with webdav server (http port: %v): %v", *httpPort, err)
 	}
+}
 
+func monitorRuntimeProfile() {
+	var p Profile
+	var stats runtime.MemStats
+	for {
+		<-time.After(
+			time.Duration(*poll) * time.Second)
+		runtime.ReadMemStats(&stats)
+
+		p.Alloc = stats.Alloc
+		p.TotalAlloc = stats.TotalAlloc
+		p.MemoryAlloc = stats.Mallocs
+		p.Free = stats.Frees
+		p.Objects = p.MemoryAlloc - p.Free
+
+		// GC stuff
+		p.NumCPU = runtime.NumCPU()
+		p.NGC = stats.NumGC
+
+		profile, _ := json.Marshal(p)
+		log.Println(string(profile))
+	}
+}
+
+func logHandler(logPath string) {
+	// if the user supplies (what we define as a) syslog path, unpack
+	// -log tcp@hostname:port | -log udp@addr:port
+	if strings.Contains(logPath, "@") {
+		addr := strings.Split(logPath, "@")
+		logger, e := syslog.Dial(addr[0], addr[1],
+			syslog.LOG_WARNING|syslog.LOG_DAEMON, "__DAV__") // anything else here
+		check(e)
+		log.SetOutput((logger))
+	} else {
+		// otherwise user supplied a path (or fat fingered something)
+		// -log /path/to/flatFile.txt
+		logger, e := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		check(e)
+		defer logger.Close()
+		log.SetOutput(logger)
+	}
+}
+
+func check(e error) {
+	if e != nil {
+		log.Fatalf("send encountered an error!\t%+v\n", e)
+	}
 }
