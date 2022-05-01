@@ -1,5 +1,5 @@
 # webdav
-small webdav server written in go. meant for network attached storage.
+file server written in go; serve files over http/https using webdav.
 
 ```
 rxlx ~ $ webdav -h
