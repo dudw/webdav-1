@@ -15,6 +15,8 @@ import (
 	"golang.org/x/net/webdav"
 )
 
+const _version_ = "Rel_20220501_V1"
+
 var (
 	httpPort  = flag.Int("p", 6200, "http port (plain)")
 	httpsPort = flag.Int("ps", 6201, "https port (tls)")
@@ -23,6 +25,7 @@ var (
 	anon      = flag.Bool("anon", false, "anonymous connections allowed (user auth disabled)")
 	monitor   = flag.Bool("monitor", false, "enable metric logging; memory, heap, numGC, etc")
 	both      = flag.Bool("both", false, "run an http server and https server")
+	version   = flag.Bool("v", false, "show version number")
 	cert      = flag.String("cert", "cert.pem", "path to your cert")
 	key       = flag.String("key", "key.pem", "path to your key")
 	dir       = flag.String("dir", "./", "Directory to serve from. Default is CWD")
@@ -43,6 +46,10 @@ type Profile struct {
 
 func main() {
 	flag.Parse()
+	if *version {
+		fmt.Printf("\nwebdav fileserver version: %v\n", _version_)
+		os.Exit(0)
+	}
 	logHandler(*logPath)
 	if *monitor {
 		go monitorRuntimeProfile()
@@ -68,10 +75,12 @@ func main() {
 				w.Header().Set("Timeout", "86399")
 				svr.ServeHTTP(w, r)
 			} else {
+				log.Printf("FAILED LOGIN ATTEMPT -> %v", r.Host)
 				w.WriteHeader(401)
 				w.Write([]byte("failed to authenticate; access denied."))
 			}
 		}
+		svr.ServeHTTP(w, r)
 	})
 	if !*insecure {
 		if _, err := os.Stat(*cert); err != nil {
