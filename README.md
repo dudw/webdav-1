@@ -1,9 +1,13 @@
 # webdav
-small webdav server written in go. meant for network attached storage. Support for json configuration file coming soon.
+small webdav server written in go. meant for network attached storage.
 
 ```
-$ webdav -h
+rxlx ~ $ webdav -h
 Usage of webdav:
+  -anon
+    	anonymous connections allowed (user auth disabled)
+  -both
+    	run an http server and https server
   -cert string
     	path to your cert (default "./cert.pem")
   -dir string
@@ -25,7 +29,7 @@ Usage of webdav:
   
  **NOTE** you'll need a cert.pem and key.pem for tls to work
 
- # start the wevdav server, log to a remote syslog server, monitor stats
+ # start the wevdav server with TLS and basic auth enabled, log to a remote syslog server, monitor stats
  # every 30 mins.
  $ webdav -log udp@ADDR:514 \
    -dir /path/here/ \
@@ -35,12 +39,18 @@ Usage of webdav:
 ```
 
 <h2>post script</h2>
-Running this will start both an http server as well as https. That means if you do not supply a specific port for plain http, it will default to 6021. if you have anything running on this port the server will fail to start.
+Basic Auth Config:
+unless modified / recompiled, webdav will look for the environment variables listed below. They must be present server side for basic auth to work.
+<hr>
 
-<br>
+```bash
+export DUSR="cowpower"                                # webdav user
+export DAT="a961431417E^Cab5d9fDe53752ec81937dc944*5" # webdav access token
+```
 
-<h3>more notes</h3>
+*NOTE* change these values to whatever you want, but your clients will need to know them.
 
-For some reason (as of big sur 11.3.1) macOS fails to negotiate for cipher suites and the handshake will always fail for self-signed certs. You will need to add them to your keyring. **Additionally** on mac, I'm tracing down a an error where finder locks up trying to write to the remote location ( which is running on EL8 ) over http (not secure). macOS just doesnt like dealing with plain http very much it would appear.
 
-The binary was compiled on RHEL8, but I believe it should be pretty portable.
+<hr>
+<h3>future Updates in the works</h3>
+Support for json configuration files to reduce CLI args. More robust user authentication. add logging levels. 
