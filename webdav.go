@@ -75,12 +75,13 @@ func main() {
 				w.Header().Set("Timeout", "86399")
 				svr.ServeHTTP(w, r)
 			} else {
-				log.Printf("FAILED LOGIN ATTEMPT -> %v", r.Host)
+				log.Printf("Recieved an unauthenticated connection from -> %v", r.Host)
 				w.WriteHeader(401)
 				w.Write([]byte("failed to authenticate; access denied."))
 			}
+		} else {
+			svr.ServeHTTP(w, r)
 		}
-		svr.ServeHTTP(w, r)
 	})
 	if !*insecure {
 		if _, err := os.Stat(*cert); err != nil {
