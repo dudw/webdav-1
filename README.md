@@ -48,9 +48,12 @@ export DUSR="cowpower"                                # webdav user
 export DAT="a961431417E^Cab5d9fDe53752ec81937dc944*5" # webdav access token
 ```
 
-to **install**
 <hr>
+
+*TO INSTALL*
+
 if you're compiling from source, you'll need to install go (dont worry, it's easy) -> https://go.dev/doc/install. otherwise just download the binary and add it to your path.
+<br>
 
 ```bash
 mkdir $HOME/bin/
