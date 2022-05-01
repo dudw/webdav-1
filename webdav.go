@@ -20,9 +20,11 @@ var (
 	httpsPort = flag.Int("ps", 6201, "https port (tls)")
 	poll      = flag.Int("poll", 30, "how often to poll runtime stats")
 	insecure  = flag.Bool("insecure", false, "disable TLS")
+	anon      = flag.Bool("anon", false, "anonymous connections allowed (user auth disabled)")
 	monitor   = flag.Bool("monitor", false, "enable metric logging; memory, heap, numGC, etc")
-	cert      = flag.String("cert", "./cert.pem", "path to your cert")
-	key       = flag.String("key", "./key.pem", "path to your key")
+	both      = flag.Bool("both", false, "run an http server and https server")
+	cert      = flag.String("cert", "cert.pem", "path to your cert")
+	key       = flag.String("key", "key.pem", "path to your key")
 	dir       = flag.String("dir", "./", "Directory to serve from. Default is CWD")
 	logPath   = flag.String("log", "./webdav.log", "path/file to log to")
 )
@@ -58,7 +60,19 @@ func main() {
 		},
 	}
 
-	http.Handle("/", svr)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if !*anon {
+			uname, pwd, _ := r.BasicAuth()
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			if uname == os.Getenv("DUSR") && pwd == os.Getenv("DAT") {
+				w.Header().Set("Timeout", "86399")
+				svr.ServeHTTP(w, r)
+			} else {
+				w.WriteHeader(401)
+				w.Write([]byte("failed to authenticate; access denied."))
+			}
+		}
+	})
 	if !*insecure {
 		if _, err := os.Stat(*cert); err != nil {
 			fmt.Printf("no cert located at: %v", *cert)
@@ -68,12 +82,18 @@ func main() {
 			fmt.Printf("no key located at: %v", *key)
 			os.Exit(1)
 		}
-
-		go http.ListenAndServeTLS(fmt.Sprintf(":%d", *httpsPort), *cert, *key, nil)
+		if *both {
+			go http.ListenAndServeTLS(fmt.Sprintf(":%d", *httpsPort), *cert, *key, nil)
+			http.ListenAndServe(fmt.Sprintf(":%d", *httpPort), nil)
+		}
+		http.ListenAndServeTLS(fmt.Sprintf(":%d", *httpsPort), *cert, *key, nil)
 	}
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", *httpPort), nil); err != nil {
-		fmt.Println(err)
-		log.Fatalf("error with webdav server (http port: %v): %v", *httpPort, err)
+
+	if *insecure {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", *httpPort), nil); err != nil {
+			fmt.Println(err)
+			log.Fatalf("error with webdav server (http port: %v): %v", *httpPort, err)
+		}
 	}
 }
 
