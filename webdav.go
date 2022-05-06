@@ -26,6 +26,7 @@ var (
 	monitor   = flag.Bool("monitor", false, "enable metric logging; memory, heap, numGC, etc")
 	both      = flag.Bool("both", false, "run an http server and https server")
 	version   = flag.Bool("v", false, "show version number")
+	quiet     = flag.Bool("quiet", false, "only log errors")
 	cert      = flag.String("cert", "cert.pem", "path to your cert")
 	key       = flag.String("key", "key.pem", "path to your key")
 	dir       = flag.String("dir", "./", "Directory to serve from. Default is CWD")
@@ -60,9 +61,10 @@ func main() {
 		LockSystem: webdav.NewMemLS(),
 		Logger: func(r *http.Request, err error) {
 			if err != nil {
-				log.Printf("-> %s: %s, ERROR: %s\n", r.Method, r.URL, err)
-			} else {
-				log.Printf("-> %s: %s \n", r.Method, r.URL)
+				log.Printf("-> %s: %s, ERROR->: %s on %v", r.Method, r.URL, err, r.RemoteAddr)
+			}
+			if !*quiet {
+				log.Printf("-> %s: %s -> %v", r.Method, r.URL, r.RemoteAddr)
 			}
 		},
 	}
@@ -72,10 +74,13 @@ func main() {
 			uname, pwd, _ := r.BasicAuth()
 			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 			if uname == os.Getenv("DUSR") && pwd == os.Getenv("DAT") {
+				if !*quiet {
+					log.Printf("recieved an authenticated connection from -> %v...starting server..", r.RemoteAddr)
+				}
 				w.Header().Set("Timeout", "86399")
 				svr.ServeHTTP(w, r)
 			} else {
-				log.Printf("Recieved an unauthenticated connection from -> %v", r.Host)
+				log.Printf("recieved an attempted connection from -> %v, but no credentials were provided...", r.RemoteAddr)
 				w.WriteHeader(401)
 				w.Write([]byte("failed to authenticate; access denied."))
 			}
@@ -138,19 +143,17 @@ func logHandler(logPath string) {
 		logger, e := syslog.Dial(addr[0], addr[1],
 			syslog.LOG_WARNING|syslog.LOG_DAEMON, "__DAV__") // anything else here
 		check(e)
-		log.SetOutput((logger))
+		log.SetOutput(logger)
 	} else {
-		// otherwise user supplied a path (or fat fingered something)
-		// -log /path/to/flatFile.txt
-		logger, e := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		logger, e := syslog.New(syslog.LOG_INFO, logPath)
 		check(e)
-		defer logger.Close()
 		log.SetOutput(logger)
 	}
 }
 
 func check(e error) {
 	if e != nil {
-		log.Fatalf("send encountered an error!\t%+v\n", e)
+		fmt.Printf("encountered an error!\t%v\n", e)
+		os.Exit(1)
 	}
 }
