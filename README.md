@@ -9,15 +9,15 @@ Usage of webdav:
   -both
     	run an http server and https server
   -cert string
-    	path to your cert (default "./cert.pem")
+    	path to your cert (default "cert.pem")
   -dir string
     	Directory to serve from. Default is CWD (default "./")
   -insecure
     	disable TLS
   -key string
-    	path to your key (default "./key.pem")
+    	path to your key (default "key.pem")
   -log string
-    	path/file to log to (default "./webdav.log")
+    	syslog server or /path/to/file to log to (default "webdav.log")
   -monitor
     	enable metric logging; memory, heap, numGC, etc
   -p int
@@ -26,6 +26,11 @@ Usage of webdav:
     	how often to poll runtime stats (default 30)
   -ps int
     	https port (tls) (default 6201)
+  -quiet
+    	only log errors
+  -uniq string
+    	if using syslog, a unique process name for easier debugging (default "__DAV__")
+  -v	show version number
   
  **NOTE** you'll need a cert.pem and key.pem for tls to work
 
