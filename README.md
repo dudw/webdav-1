@@ -34,13 +34,12 @@ Usage of webdav:
   
  **NOTE** you'll need a cert.pem and key.pem for tls to work
 
- # start the wevdav server with TLS and basic auth enabled, log to a remote syslog server, monitor stats
- # every 30 mins.
- $ webdav -log udp@ADDR:514 \
-   -dir /path/here/ \
-   -cert /path/cert.pem \
-   -key /path/key.pem \
-   -ps 5201 -monitor -poll 1800
+# example runs in TLS only mode, allows anonymous connections, logs to a remote server, but only errors
+# the uniq flag is just a way to grep through your remote logs easier. finally , run on port 6201 and monitor the
+# runtime stats every 30 minutes
+# EXAMPLE:
+ webdav -dir ./share/ -anon -log udp@192.168.86.42:514 -quiet -uniq "MySpecialProcess01" \
+        -cert ./cert.pem -key ./key.pem -ps 6201 -monitor -poll 1800
 ```
 
 <h2>install / config</h2>
