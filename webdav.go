@@ -15,7 +15,7 @@ import (
 	"golang.org/x/net/webdav"
 )
 
-const _version_ = "Rel_20220514"
+const _version_ = "Rel_20220514a"
 
 var (
 	httpPort  = flag.Int("p", 6200, "http port (plain)")
@@ -48,11 +48,13 @@ type Profile struct {
 
 func main() {
 	flag.Parse()
-	// i suspect theres a better way to do this
+
+	// print the version if so desired
 	if *version {
 		fmt.Printf("\nwebdav fileserver version: %v\n", _version_)
 		os.Exit(0)
 	}
+
 	// if the user supplied -log arg contains an "@", we treat it as a remote logging path
 	if strings.Contains(*logPath, "@") {
 		addr := strings.Split(*logPath, "@")
@@ -62,13 +64,14 @@ func main() {
 		log.SetOutput(logger)
 	} else {
 		// otherwise we treat the arg like a file path
-		logger, err := os.OpenFile(*logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			log.Fatalf("error opening file: %v", err)
-		}
+		logger, e := os.OpenFile(*logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		check(e)
 		defer logger.Close()
+		log.SetPrefix(fmt.Sprintf("%v: ", *uniq))
 		log.SetOutput(logger)
 	}
+
+	// if the user wants to poll the runtime stats, start in `background` (so to speak)
 	if *monitor {
 		go monitorRuntimeProfile()
 	}
