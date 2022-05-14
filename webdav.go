@@ -15,7 +15,7 @@ import (
 	"golang.org/x/net/webdav"
 )
 
-const _version_ = "Rel_20220501_V1"
+const _version_ = "Rel_20220514"
 
 var (
 	httpPort  = flag.Int("p", 6200, "http port (plain)")
@@ -30,7 +30,8 @@ var (
 	cert      = flag.String("cert", "cert.pem", "path to your cert")
 	key       = flag.String("key", "key.pem", "path to your key")
 	dir       = flag.String("dir", "./", "Directory to serve from. Default is CWD")
-	logPath   = flag.String("log", "./webdav.log", "path/file to log to")
+	logPath   = flag.String("log", "webdav.log", "syslog server or /path/to/file to log to")
+	uniq      = flag.String("uniq", "__DAV__", "if using syslog, a unique process name for easier debugging")
 )
 
 type Profile struct {
@@ -51,7 +52,23 @@ func main() {
 		fmt.Printf("\nwebdav fileserver version: %v\n", _version_)
 		os.Exit(0)
 	}
-	logHandler(*logPath)
+	// if the user supplies (what we define as a) syslog path, unpack
+	// -log tcp@hostname:port | -log udp@addr:port
+	if strings.Contains(*logPath, "@") {
+		addr := strings.Split(*logPath, "@")
+		logger, e := syslog.Dial(addr[0], addr[1],
+			syslog.LOG_WARNING|syslog.LOG_DAEMON, "__DAV__") // anything else here
+		check(e)
+		log.SetOutput(logger)
+	} else {
+		// -log /this/is/sparta.log
+		logger, err := os.OpenFile(*logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening file: %v", err)
+		}
+		defer logger.Close()
+		log.SetOutput(logger)
+	}
 	if *monitor {
 		go monitorRuntimeProfile()
 	}
@@ -90,11 +107,11 @@ func main() {
 	})
 	if !*insecure {
 		if _, err := os.Stat(*cert); err != nil {
-			fmt.Printf("no cert located at: %v", *cert)
+			fmt.Printf("no cert located at: %v\n", *cert)
 			os.Exit(1)
 		}
 		if _, er := os.Stat(*key); er != nil {
-			fmt.Printf("no key located at: %v", *key)
+			fmt.Printf("no key located at: %v\n", *key)
 			os.Exit(1)
 		}
 		if *both {
@@ -132,22 +149,6 @@ func monitorRuntimeProfile() {
 
 		profile, _ := json.Marshal(p)
 		log.Println(string(profile))
-	}
-}
-
-func logHandler(logPath string) {
-	// if the user supplies (what we define as a) syslog path, unpack
-	// -log tcp@hostname:port | -log udp@addr:port
-	if strings.Contains(logPath, "@") {
-		addr := strings.Split(logPath, "@")
-		logger, e := syslog.Dial(addr[0], addr[1],
-			syslog.LOG_WARNING|syslog.LOG_DAEMON, "__DAV__") // anything else here
-		check(e)
-		log.SetOutput(logger)
-	} else {
-		logger, e := syslog.New(syslog.LOG_INFO, logPath)
-		check(e)
-		log.SetOutput(logger)
 	}
 }
 
