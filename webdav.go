@@ -48,20 +48,20 @@ type Profile struct {
 
 func main() {
 	flag.Parse()
+	// i suspect theres a better way to do this
 	if *version {
 		fmt.Printf("\nwebdav fileserver version: %v\n", _version_)
 		os.Exit(0)
 	}
-	// if the user supplies (what we define as a) syslog path, unpack
-	// -log tcp@hostname:port | -log udp@addr:port
+	// if the user supplied -log arg contains an "@", we treat it as a remote logging path
 	if strings.Contains(*logPath, "@") {
 		addr := strings.Split(*logPath, "@")
 		logger, e := syslog.Dial(addr[0], addr[1],
-			syslog.LOG_WARNING|syslog.LOG_DAEMON, "__DAV__") // anything else here
+			syslog.LOG_WARNING|syslog.LOG_DAEMON, *uniq)
 		check(e)
 		log.SetOutput(logger)
 	} else {
-		// -log /this/is/sparta.log
+		// otherwise we treat the arg like a file path
 		logger, err := os.OpenFile(*logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			log.Fatalf("error opening file: %v", err)
